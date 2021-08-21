@@ -15,6 +15,9 @@
       text-align: center;
       margin: 0px 10px;
     }
+    .el-table .warning-row {
+      background: oldlace;
+    }
   </style>
 </head>
 <body>
@@ -86,9 +89,13 @@
     <p>预计结果列表（大于等于合成列表中系统价格平均值：{{avg}}）：</p>
     <el-table
       :data="resultList"
-      :stripe="true"
       max-height="500"
-      style="width: 100%">
+      style="width: 100%"
+      :row-class-name="tableRowClassName">
+      <el-table-column
+      type="index"
+      width="50">
+      </el-table-column>
       <el-table-column
         prop="name"
         label="名称"
@@ -118,6 +125,37 @@
         label="系数(系统/实际)"
         >
       </el-table-column>
+    </el-table>
+
+    <p>推荐部分：</p>
+    <el-table
+      :data="suggest"
+      max-height="500"
+      style="width: 100%"
+      >
+      <el-table-column
+        prop="a"
+        label="选项">
+      </el-table-column>
+      <el-table-column
+        prop="cost"
+        label="花费"
+        sortable
+        width="150">
+      </el-table-column>
+      <el-table-column
+        prop="avg"
+        label="最低系统价"
+        sortable
+        width="150">
+      </el-table-column>
+      <el-table-column
+        prop="c"
+        sortable
+        label="杂质"
+        width="50">
+      </el-table-column>
+      
     </el-table>
 
   </div>
@@ -277,9 +315,9 @@
           {name: "英雄级武器蓝粉色光效宝箱II", probability: "0.769%", sysPrice: 1000, acPrice: 800},
           {name: "英雄级武器蓝粉色光效宝箱III", probability: "0.769%", sysPrice: 1000, acPrice: 1500},
           {name: "英雄级武器红绿色光效箱子", probability: "0.770%", sysPrice: 1000, acPrice: 2100},
-          {name: "英雄级武器红绿色光效箱子IV", probability: "0.770%", sysPrice: 1000, acPrice: 580},
+          {name: "英雄级武器蓝粉色光效箱子IV", probability: "0.770%", sysPrice: 1000, acPrice: 680},
           {name: "英雄级武器红绿色光效箱子II", probability: "0.770%", sysPrice: 1000, acPrice: 880},
-          {name: "英雄级武器红绿色光效箱子IV", probability: "0.770%", sysPrice: 1000, acPrice: 580},
+          {name: "英雄级武器红绿色光效箱子IV", probability: "0.770%", sysPrice: 1000, acPrice: 680},
           {name: "英雄级武器红绿色光效箱子III", probability: "0.770%", sysPrice: 1000, acPrice: 1400},
           {name: "英雄级武器紫橙光效宝箱", probability: "0.770%", sysPrice: 1000, acPrice: 5100},
           {name: "英雄级武器紫橙光效宝箱II", probability: "0.770%", sysPrice: 1000, acPrice: 2000},
@@ -420,8 +458,12 @@
           compositeList: [],
           cost: 0,
           avg: 0,
-          resultList: []
+          resultList: [],
+          suggest: []
         }
+      },
+      created() {
+        this.high()
       },
       computed: {
         ShopList() {
@@ -429,7 +471,8 @@
             item.coefficient = Number((item.sysPrice / item.acPrice).toFixed(2))
           })
           return this.originShops
-        }
+        },
+        
       },
       methods: {
         add(shop) {
@@ -444,6 +487,47 @@
         },
         del(index) {
           this.compositeList.splice(index,1)
+        },
+        tableRowClassName({row, rowIndex}) {
+          if (row.acPrice < this.cost) {
+            return 'warning-row';
+          }
+          return '';
+        },
+        // 推荐
+        high(){
+          let that = this
+          let list = [
+            {s:5000, a:650},
+            {s:8000, a:1800},
+            {s:15000, a:2000},
+            {s:17000, a:1117},
+            {s:26000, a:3300},
+            {s:139000, a:31000}
+          ]
+          let stack = []
+          let limit = 3
+          let cal = function(canSelect) {
+            if (stack.length == limit) {
+              let cost = stack.reduce((total,b) => total + b.a, 0)
+              let avg = Number((stack.reduce((total,b) => total + b.s, 0)/3).toFixed(2))
+              let noHope = this.ShopList.reduce((total,b) => {
+                b.acPrice < cost && b.sysPrice >= avg && total++
+                return total
+              },0)
+              this.suggest.push({a: JSON.stringify(stack), cost: cost, avg: avg, c: noHope})
+              console.log(`${stack[0].s} ${stack[1].s} ${stack[2].s}`);
+              stack.pop()
+            } else {
+              for(let i = 0; i < canSelect.length; i++) {
+                stack.push(canSelect[i])
+                let nextSelect = canSelect.slice(i)
+                cal.call(this,nextSelect)
+              }
+              stack.pop()
+            }
+          }
+          cal.call(this,list)
         }
       }
     })
